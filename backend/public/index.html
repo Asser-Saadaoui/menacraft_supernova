@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Supernova — AI Content Detector</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:        #0b0c10;
+      --surface:   #13151c;
+      --border:    #1f2230;
+      --accent:    #00f5a0;
+      --accent2:   #00b4d8;
+      --danger:    #ff4d6d;
+      --warn:      #ffd60a;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --radius:    10px;
+      --mono:      'Space Mono', monospace;
+      --sans:      'Syne', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .logo-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:.5; transform:scale(1.4); }
+    }
+    header h1 { font-size: 1.2rem; font-weight: 800; letter-spacing: .08em; color: var(--text); }
+    header span { font-size: .75rem; color: var(--muted); font-family: var(--mono); margin-left: auto; }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      grid-template-rows: auto 1fr;
+      gap: 0;
+      flex: 1;
+      height: calc(100vh - 61px);
+    }
+
+    /* ── Panel shared ── */
+    .panel {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-title {
+      font-family: var(--mono);
+      font-size: .65rem;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 14px 20px 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .panel-title::before {
+      content: '';
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .panel-body { flex: 1; overflow-y: auto; padding: 20px; }
+
+    /* ── Input panel ── */
+    label { font-size: .75rem; font-weight: 600; color: var(--muted); display: block; margin-bottom: 6px; }
+
+    input[type="text"], input[type="url"], select, textarea {
+      width: 100%;
+      background: #0e1017;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: .8rem;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      outline: none;
+      transition: border-color .2s;
+      margin-bottom: 16px;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    input[readonly] { color: var(--accent); }
+
+    select option { background: #0e1017; }
+
+    .image-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .tab-btn {
+      background: var(--border);
+      color: var(--muted);
+      border: none;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: .72rem;
+      transition: all .2s;
+    }
+    .tab-btn.active { background: var(--accent); color: #000; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    #imagePreview {
+      max-width: 100%; max-height: 180px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      display: none;
+      margin-bottom: 14px;
+      object-fit: cover;
+    }
+
+    .status-msg {
+      font-family: var(--mono);
+      font-size: .72rem;
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+      display: none;
+    }
+    .status-msg.ok      { background: #0d2b1f; color: var(--accent); border: 1px solid var(--accent); display: block; }
+    .status-msg.err     { background: #2b0d14; color: var(--danger); border: 1px solid var(--danger); display: block; }
+    .status-msg.loading { background: #2b230d; color: var(--warn);   border: 1px solid var(--warn);   display: block; }
+
+    #imageSection { display: none; }
+
+    /* ── Buttons ── */
+    .btn {
+      border: none; cursor: pointer;
+      font-family: var(--mono);
+      font-size: .78rem;
+      padding: 10px 20px;
+      border-radius: var(--radius);
+      transition: all .15s;
+      font-weight: 700;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+      width: 100%;
+      margin-top: 4px;
+      letter-spacing: .05em;
+    }
+    .btn-primary:hover  { filter: brightness(1.15); }
+    .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: .72rem;
+      padding: 7px 14px;
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Results panel ── */
+    .results-panel {
+      grid-column: 2;
+      grid-row: 1 / 3;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-right: none;
+    }
+
+    /* Verdict strip */
+    #verdictStrip {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--surface);
+      min-height: 70px;
+    }
+    .verdict-label {
+      font-family: var(--mono);
+      font-size: .65rem;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .verdict-badge {
+      font-family: var(--mono);
+      font-size: .85rem;
+      font-weight: 700;
+      padding: 6px 16px;
+      border-radius: 20px;
+      background: var(--border);
+      color: var(--muted);
+    }
+    .verdict-badge.ai     { background: #2b0d14; color: var(--danger); border: 1px solid var(--danger); }
+    .verdict-badge.human  { background: #0d2b1f; color: var(--accent); border: 1px solid var(--accent); }
+    .verdict-badge.unsure { background: #2b230d; color: var(--warn);   border: 1px solid var(--warn); }
+
+    .confidence-bar-wrap { flex: 1; }
+    .confidence-track {
+      height: 6px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .confidence-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 99px;
+      background: var(--accent);
+      transition: width .6s ease;
+    }
+
+    /* Results body — two columns: raw JSON + chatbot explanation */
+    .results-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
+    }
+
+    /* Raw JSON */
+    .json-pane {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #rawJson {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      font-family: var(--mono);
+      font-size: .75rem;
+      line-height: 1.7;
+      color: #abb2bf;
+      background: #090b0f;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    /* JSON syntax highlight */
+    .json-key   { color: #e06c75; }
+    .json-str   { color: #98c379; }
+    .json-num   { color: #d19a66; }
+    .json-bool  { color: #56b6c2; }
+    .json-null  { color: #c678dd; }
+
+    /* Chatbot explanation pane */
+    .chat-pane {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .msg {
+      max-width: 88%;
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: .82rem;
+      line-height: 1.65;
+    }
+    .msg.bot {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      align-self: flex-start;
+    }
+    .msg.bot strong { color: var(--accent); }
+    .msg.user {
+      background: #0d2b1f;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      align-self: flex-end;
+      font-family: var(--mono);
+      font-size: .75rem;
+    }
+    .msg.placeholder {
+      align-self: center;
+      text-align: center;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: .72rem;
+      border: 1px dashed var(--border);
+      background: transparent;
+    }
+    .typing-indicator span {
+      display: inline-block;
+      width: 6px; height: 6px;
+      margin: 0 2px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: blink 1.2s infinite;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: .2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .chat-input-row input {
+      flex: 1;
+      margin-bottom: 0;
+      background: #0e1017;
+      font-size: .78rem;
+    }
+    .chat-input-row button { white-space: nowrap; }
+
+    /* ── Scrollbars ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; grid-template-rows: auto; height: auto; }
+      .results-panel { grid-column: 1; grid-row: auto; }
+      .results-body { grid-template-columns: 1fr; }
+      .json-pane { border-right: none; border-bottom: 1px solid var(--border); max-height: 280px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-dot"></div>
+  <h1>SUPERNOVA</h1>
+  <span>AI Content Detection System v3.0</span>
+</header>
+
+<div class="layout">
+
+  <!-- ── LEFT: Input panel ── -->
+  <div class="panel">
+    <div class="panel-title">Input</div>
+    <div class="panel-body">
+
+      <label>Content to analyse</label>
+      <input type="text" id="inputField" placeholder="Type text, paste a URL, or upload an image…" />
+
+      <label>Detection type</label>
+      <select id="inputType" onchange="onTypeChange()">
+        <option value="text">Text</option>
+        <option value="link">Link / URL</option>
+        <option value="image">Image</option>
+        <option value="video">Video</option>
+      </select>
+
+      <!-- Image sub-section -->
+      <div id="imageSection">
+        <div class="image-tabs">
+          <button class="tab-btn active" onclick="switchTab('upload', event)">Upload File</button>
+          <button class="tab-btn"        onclick="switchTab('url',    event)">From URL</button>
+        </div>
+
+        <div id="tab-upload" class="tab-content active">
+          <label>Select image from device</label>
+          <input type="file" id="fileInput" accept="image/*" onchange="uploadImageFile()" style="color:var(--muted);" />
+          <div id="uploadStatus" class="status-msg"></div>
+        </div>
+
+        <div id="tab-url" class="tab-content">
+          <label>Image URL</label>
+          <input type="url" id="imageUrlInput" placeholder="https://example.com/photo.jpg" />
+          <button class="btn btn-ghost" id="fetchBtn" onclick="fetchAndUploadFromUrl()" style="margin-bottom:12px;">Fetch &amp; Upload</button>
+          <div id="urlStatus" class="status-msg"></div>
+        </div>
+
+        <img id="imagePreview" alt="Preview" />
+      </div>
+
+      <button class="btn btn-primary" id="sendBtn" onclick="sendInput()">▶ Run Detection</button>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: Results + Chatbot ── -->
+  <div class="results-panel panel">
+
+    <!-- Verdict bar -->
+    <div id="verdictStrip">
+      <div>
+        <div class="verdict-label">Verdict</div>
+        <div class="verdict-badge" id="verdictBadge">Waiting…</div>
+      </div>
+      <div class="confidence-bar-wrap">
+        <div class="verdict-label">Confidence — <span id="confValue">—</span></div>
+        <div class="confidence-track">
+          <div class="confidence-fill" id="confFill"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="results-body">
+
+      <!-- Raw JSON -->
+      <div class="json-pane">
+        <div class="panel-title">Raw microservice output</div>
+        <pre id="rawJson">// Result will appear here after detection</pre>
+      </div>
+
+      <!-- Chatbot explanation -->
+      <div class="chat-pane">
+        <div class="panel-title">AI Expert Explanation</div>
+
+        <div class="chat-messages" id="chatMessages">
+          <div class="msg placeholder" id="placeholderMsg">
+            Run a detection first — the AI expert<br/>will explain the results here.
+          </div>
+        </div>
+
+        <div class="chat-input-row">
+          <input type="text" id="chatInput" placeholder="Ask a follow-up question…" onkeydown="if(event.key==='Enter') askChatbot()" />
+          <button class="btn btn-ghost" onclick="askChatbot()">Send</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── State ─────────────────────────────────────────────────────────────────
+  let lastAnalysis = null;
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function onTypeChange() {
+    const t = document.getElementById('inputType').value;
+    document.getElementById('imageSection').style.display = t === 'image' ? 'block' : 'none';
+    if (t !== 'image') { document.getElementById('inputField').value = ''; resetPreview(); }
+  }
+
+  function switchTab(tab, e) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    e.target.classList.add('active');
+    resetPreview();
+  }
+
+  function resetPreview() {
+    const img = document.getElementById('imagePreview');
+    img.style.display = 'none'; img.src = '';
+    setStatus('uploadStatus', '', '');
+    setStatus('urlStatus', '', '');
+  }
+
+  function setStatus(id, type, msg) {
+    const el = document.getElementById(id);
+    el.className = 'status-msg' + (type ? ' ' + type : '');
+    el.textContent = msg;
+  }
+
+  function showPreview(src) {
+    const img = document.getElementById('imagePreview');
+    img.src = src; img.style.display = 'block';
+  }
+
+  // ── Upload helpers ────────────────────────────────────────────────────────
+  async function uploadToServer(file) {
+    const form = new FormData();
+    form.append('image', file);
+    const resp = await fetch('/upload-image', { method: 'POST', body: form });
+    if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.error || 'Upload failed'); }
+    return (await resp.json()).path;
+  }
+
+  async function uploadImageFile() {
+    const file = document.getElementById('fileInput').files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setStatus('uploadStatus','err','Please select a valid image.'); return; }
+    setStatus('uploadStatus','loading','Uploading…');
+    showPreview(URL.createObjectURL(file));
+    try {
+      const p = await uploadToServer(file);
+      document.getElementById('inputField').value = p;
+      setStatus('uploadStatus','ok', `"${file.name}" saved → ${p}`);
+    } catch(err) { setStatus('uploadStatus','err','Error: '+err.message); }
+  }
+
+  async function fetchAndUploadFromUrl() {
+    const url = document.getElementById('imageUrlInput').value.trim();
+    if (!url) { setStatus('urlStatus','err','Please enter a URL.'); return; }
+    setStatus('urlStatus','loading','Fetching…');
+    document.getElementById('fetchBtn').disabled = true;
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('HTTP '+resp.status);
+      const ct = resp.headers.get('content-type')||'';
+      if (!ct.startsWith('image/')) throw new Error('Not an image ('+ct+')');
+      const blob = await resp.blob();
+      const ext = ct.split('/')[1].split(';')[0]||'jpg';
+      const file = new File([blob],'fetched.'+ext,{type:ct});
+      showPreview(URL.createObjectURL(blob));
+      setStatus('urlStatus','loading','Uploading to server…');
+      const p = await uploadToServer(file);
+      document.getElementById('inputField').value = p;
+      setStatus('urlStatus','ok',`Saved → ${p} (${(blob.size/1024).toFixed(1)} KB)`);
+    } catch(err) { setStatus('urlStatus','err','Error: '+err.message); }
+    finally { document.getElementById('fetchBtn').disabled = false; }
+  }
+
+  // ── Send to detection microservice ────────────────────────────────────────
+  async function sendInput() {
+    const input = document.getElementById('inputField').value.trim();
+    const type  = document.getElementById('inputType').value;
+    if (!input) { alert('Please provide an input first.'); return; }
+
+    document.getElementById('sendBtn').disabled = true;
+    setVerdict('waiting');
+    document.getElementById('rawJson').textContent = '// Running detection…';
+    clearChat();
+    appendMsg('bot', '<span class="typing-indicator"><span></span><span></span><span></span></span>');
+
+    try {
+      const resp = await fetch('/send-input', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input, type }),
+      });
+      const data = await resp.json();
+      lastAnalysis = data;
+
+      // Display raw JSON
+      document.getElementById('rawJson').innerHTML = syntaxHighlight(data);
+
+      // Update verdict strip
+      const result = data.data || data;
+      updateVerdict(result);
+
+      // Ask chatbot to explain — calls your Streamlit/chatbot backend
+      await fetchExplanation(result);
+
+    } catch(err) {
+      document.getElementById('rawJson').textContent = 'Error: '+err.message;
+      clearChat();
+      appendMsg('bot', `⚠️ Could not reach the backend: <strong>${err.message}</strong>`);
+    } finally {
+      document.getElementById('sendBtn').disabled = false;
+    }
+  }
+
+  // ── Verdict strip ─────────────────────────────────────────────────────────
+  function setVerdict(state) {
+    const badge = document.getElementById('verdictBadge');
+    badge.className = 'verdict-badge';
+    badge.textContent = 'Waiting…';
+    document.getElementById('confFill').style.width = '0%';
+    document.getElementById('confValue').textContent = '—';
+  }
+
+  function updateVerdict(result) {
+    const badge = document.getElementById('verdictBadge');
+    // Adapt these keys to match your microservice response shape
+    const label      = result.label || result.verdict || result.classification || '?';
+    const confidence = result.confidence ?? result.score ?? null;
+
+    const isAI    = /ai|fake|generated|synthetic/i.test(label);
+    const isHuman = /human|real|authentic/i.test(label);
+
+    badge.textContent = label.toUpperCase();
+    badge.className   = 'verdict-badge ' + (isAI ? 'ai' : isHuman ? 'human' : 'unsure');
+
+    if (confidence !== null) {
+      const pct = Math.round(confidence * (confidence <= 1 ? 100 : 1));
+      document.getElementById('confValue').textContent = pct + '%';
+      document.getElementById('confFill').style.width  = pct + '%';
+      document.getElementById('confFill').style.background =
+        isAI ? 'var(--danger)' : isHuman ? 'var(--accent)' : 'var(--warn)';
+    }
+  }
+
+  // ── Chatbot ───────────────────────────────────────────────────────────────
+  // This calls your Node.js backend which then talks to the Streamlit/Ollama chatbot.
+  // See the integration note below — you need to add POST /explain to server.js
+  async function fetchExplanation(analysisData) {
+    clearChat();
+    appendMsg('bot', '<span class="typing-indicator"><span></span><span></span><span></span></span>');
+    try {
+      const resp = await fetch('/explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: 'Explique-moi ce rapport de manière claire et pédagogique.',
+          analysis: analysisData,
+        }),
+      });
+      const data = await resp.json();
+      clearChat();
+      appendMsg('bot', data.explanation || data.response || JSON.stringify(data));
+    } catch(err) {
+      clearChat();
+      appendMsg('bot', '⚠️ Chatbot unreachable. Is the Python chatbot running?');
+    }
+  }
+
+  async function askChatbot() {
+    const input = document.getElementById('chatInput');
+    const q = input.value.trim();
+    if (!q) return;
+    if (!lastAnalysis) { appendMsg('bot', 'Run a detection first before asking questions.'); return; }
+
+    appendMsg('user', q);
+    input.value = '';
+    appendMsg('bot', '<span class="typing-indicator"><span></span><span></span><span></span></span>', 'typing');
+
+    try {
+      const resp = await fetch('/explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q, analysis: lastAnalysis.data || lastAnalysis }),
+      });
+      const data = await resp.json();
+      removeTyping();
+      appendMsg('bot', data.explanation || data.response || JSON.stringify(data));
+    } catch(err) {
+      removeTyping();
+      appendMsg('bot', '⚠️ Chatbot unreachable.');
+    }
+  }
+
+  // ── Chat DOM helpers ──────────────────────────────────────────────────────
+  function clearChat() {
+    const box = document.getElementById('chatMessages');
+    box.innerHTML = '';
+  }
+  function appendMsg(role, html, id) {
+    const box = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'msg ' + role;
+    if (id) div.id = id;
+    div.innerHTML = html;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+  function removeTyping() {
+    const el = document.getElementById('typing');
+    if (el) el.remove();
+  }
+
+  // ── JSON syntax highlighter ───────────────────────────────────────────────
+  function syntaxHighlight(json) {
+    const s = JSON.stringify(json, null, 2)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return s.replace(
+      /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+      m => {
+        let cls = 'json-num';
+        if (/^"/.test(m)) cls = /:$/.test(m) ? 'json-key' : 'json-str';
+        else if (/true|false/.test(m)) cls = 'json-bool';
+        else if (/null/.test(m)) cls = 'json-null';
+        return `<span class="${cls}">${m}</span>`;
+      }
+    );
+  }
+</script>
+</body>
+</html>
