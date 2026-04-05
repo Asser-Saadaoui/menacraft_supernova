@@ -1,1 +1,46 @@
-supernova 3.0
+# 🛡️ TruthHover: The AI-Driven Deepfake & Misinformation Detector
+
+presentation link :https://prezi.com/view/FYWiUGGx3IMnDEjmq0SV/?referral_token=D7UkTRlnB3FN
+
+## 📌 Pitch Deck & Presentation
+**[Watch our full Hackathon Pitch Presentation on Prezi here!](https://prezi.com/view/FYWiUGGx3IMnDEjmq0SV/?referral_token=D7UkTRlnB3FN)**
+
+---
+
+## 🚨 The Problem: The Trust Crisis
+[cite_start]In today's digital age, anyone can create content that looks real, but isn't[cite: 4]. [cite_start]Photos, videos, or documents can be subtly altered, AI-generated, or entirely fabricated[cite: 5]. [cite_start]This creates a critical gap between information and truth: citizens, institutions, and businesses can no longer rely on what they see online[cite: 6]. 
+
+[cite_start]Manual checks are slow, metadata can be easily forged, and advanced AI-generated content bypasses simple heuristics[cite: 11, 12, 14]. [cite_start]The result is the erosion of trust, confusion, and sometimes real-world harm[cite: 9].
+
+## 💡 Our Solution
+TruthHover is a comprehensive suite of AI microservices and a streamlined browser extension designed to instantly verify content authenticity. We use advanced LLMs (like LLaMA Vision via Groq) to analyze media and text, providing users with immediate, explainable results.
+
+### 🎨 The User Experience (UX/UI): Simplicity & Trust
+[cite_start]We built our UI specifically to address the need for an **Intuitive and Practical User Experience**[cite: 50]. [cite_start]The ultimate goal is to demonstrate trustworthiness and make verification results easy to interpret[cite: 68].
+
+* [cite_start]**Frictionless Verification:** The interface makes it simple to submit and review content[cite: 52]. Users simply open the TruthHover extension and select their media type (Text, Image, Video, or Chat).
+* [cite_start]**Zero Ambiguity:** Solutions should present verification results in a way that is easy to understand[cite: 46]. Our UI strips away complex technical jargon. Focus on clarity and usability, users should immediately see:
+    * [cite_start]🟢/🔴 **Status** [cite: 54] [cite_start](e.g., verified / suspicious [cite: 47]).
+    * [cite_start]📊 **Confidence score**[cite: 55].
+    * [cite_start]🧠 **Reasoning** [cite: 56] [cite_start](A brief explanation should be provided to help users understand why the AI made a decision [cite: 48]).
+* **In-Context Analysis:** The `truthhover-extension` allows users to analyze content directly where they consume it, preventing the spread of misinformation in real-time.
+
+## ⚙️ Core Capabilities (The AI Brain)
+[cite_start]The main contribution should come from AI detection and analysis[cite: 59]. We tackle multiple functional axes:
+
+1.  [cite_start]**Content Authenticity:** Detect whether content (all content type) is real or has been manipulated (that alters reality) or AI-generated[cite: 18]. [cite_start]We use AI/ML models to detect inconsistencies or anomalies[cite: 22].
+2.  [cite_start]**Contextual Consistency:** Detect whether content is being used in a misleading or incorrect context[cite: 25].
+3.  [cite_start]**Source Credibility:** Assess whether the source of the content can be trusted [cite: 36][cite_start], identifying sources that appear suspicious or unverifiable[cite: 43].
+
+## 🏗️ Architecture & Repository Structure
+To ensure low latency, scalability, and clean code, we adopted a strict microservices architecture. 
+
+```text
+📦 truth-hover-repo
+ ┣ 📂 analytica-new           # Analytics and dashboard tracking
+ ┣ 📂 backend                 # Core API gateway and routing
+ ┣ 📂 chatbot                 # Conversational context and claim analysis
+ ┣ 📂 photo_microservice      # FastAPI + LLaMA Vision for image authenticity
+ ┣ 📂 text_microservice       # NLP analysis for textual claims and source credibility
+ ┣ 📂 truthhover-extension    # The Chrome/Browser extension UI
+ ┗ 📂 videos_microservice     # Frame-by-frame deepfake video analysis
