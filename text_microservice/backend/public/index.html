@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AI Input</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 720px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #f5f5f5;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #333;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        input[type="text"],
+        input[type="url"],
+        select {
+            width: 100%;
+            padding: 9px 12px;
+            margin: 6px 0 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        input[type="text"][readonly] {
+            background: #f8f9fa;
+            color: #555;
+        }
+
+        button {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 8px;
+        }
+
+        button:hover {
+            background: #357abd;
+        }
+
+        button:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background: #6c757d;
+        }
+
+        button.secondary:hover {
+            background: #545b62;
+        }
+
+        #imageSection {
+            display: none;
+            margin-top: 10px;
+        }
+
+        .image-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .tab-btn {
+            background: #e9ecef;
+            color: #495057;
+            border: none;
+            padding: 7px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .tab-btn.active {
+            background: #4a90e2;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        #imagePreview {
+            max-width: 100%;
+            max-height: 220px;
+            margin-top: 10px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            display: none;
+        }
+
+        .status-msg {
+            font-size: 13px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .status-msg.ok {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+
+        .status-msg.err {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+
+        .status-msg.loading {
+            background: #fff3cd;
+            color: #856404;
+            display: block;
+        }
+
+        pre {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 16px;
+            border-radius: 6px;
+            overflow: auto;
+            font-size: 13px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #888;
+            margin: -6px 0 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Send Input to AI</h1>
+
+    <div class="card">
+        <label>Input</label>
+        <input type="text" id="inputField" placeholder="Text, Link, or image path will appear here">
+
+        <label>Input Type</label>
+        <select id="inputType" onchange="onTypeChange()">
+            <option value="text">Text</option>
+            <option value="link">Link</option>
+            <option value="image">Image</option>
+            <option value="video">Video (base64)</option>
+        </select>
+
+        <!-- Image section — visible only when type = image -->
+        <div id="imageSection">
+            <h3 style="margin-top:0">Import Image</h3>
+
+            <div class="image-tabs">
+                <button class="tab-btn active" onclick="switchTab('upload', event)">Upload File</button>
+                <button class="tab-btn" onclick="switchTab('url',    event)">Fetch from URL</button>
+            </div>
+
+            <!-- Upload tab -->
+            <div id="tab-upload" class="tab-content active">
+                <label>Select an image from your device</label>
+                <input type="file" id="fileInput" accept="image/*" onchange="uploadImageFile()">
+                <div id="uploadStatus" class="status-msg"></div>
+            </div>
+
+            <!-- URL fetch tab -->
+            <div id="tab-url" class="tab-content">
+                <label>Image URL</label>
+                <input type="url" id="imageUrlInput" placeholder="https://example.com/photo.jpg">
+                <p class="hint">The image will be downloaded and saved on the server.</p>
+                <button class="secondary" id="fetchBtn" onclick="fetchAndUploadFromUrl()">Fetch &amp; Upload</button>
+                <div id="urlStatus" class="status-msg"></div>
+            </div>
+
+            <img id="imagePreview" alt="Image preview">
+        </div>
+
+        <br>
+        <button onclick="sendInput()">Send to AI</button>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0">AI Response</h2>
+        <pre id="aiResponse">—</pre>
+    </div>
+
+    <script>
+        // ── Tab switching ─────────────────────────────────────────────────
+        function onTypeChange() {
+            const type = document.getElementById('inputType').value;
+            document.getElementById('imageSection').style.display =
+                type === 'image' ? 'block' : 'none';
+            if (type !== 'image') {
+                document.getElementById('inputField').value = '';
+                resetPreview();
+            }
+        }
+
+        function switchTab(tab, e) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            e.target.classList.add('active');
+            resetPreview();
+        }
+
+        function resetPreview() {
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('imagePreview').src = '';
+            setStatus('uploadStatus', '', '');
+            setStatus('urlStatus', '', '');
+        }
+
+        function setStatus(id, type, msg) {
+            const el = document.getElementById(id);
+            el.className = 'status-msg' + (type ? ' ' + type : '');
+            el.textContent = msg;
+        }
+
+        // ── Show preview from a local blob/dataURL ────────────────────────
+        function showPreview(src) {
+            const img = document.getElementById('imagePreview');
+            img.src = src;
+            img.style.display = 'block';
+        }
+
+        // ── Upload a File object to the server, return saved path ─────────
+        async function uploadToServer(file) {
+            const form = new FormData();
+            form.append('image', file);
+
+            const resp = await fetch('/upload-image', { method: 'POST', body: form });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.error || 'Upload failed');
+            }
+            return (await resp.json()).path;   // e.g. "uploads/1712345678-123456.jpg"
+        }
+
+        // ── Tab 1: user picks a file ──────────────────────────────────────
+        async function uploadImageFile() {
+            const file = document.getElementById('fileInput').files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                setStatus('uploadStatus', 'err', 'Please select a valid image file.');
+                return;
+            }
+
+            setStatus('uploadStatus', 'loading', 'Uploading...');
+            showPreview(URL.createObjectURL(file));
+
+            try {
+                const savedPath = await uploadToServer(file);
+                document.getElementById('inputField').value = savedPath;
+                setStatus('uploadStatus', 'ok',
+                    '"' + file.name + '" saved → ' + savedPath);
+            } catch (err) {
+                setStatus('uploadStatus', 'err', 'Error: ' + err.message);
+            }
+        }
+
+        // ── Tab 2: fetch from URL then upload ─────────────────────────────
+        async function fetchAndUploadFromUrl() {
+            const url = document.getElementById('imageUrlInput').value.trim();
+            if (!url) {
+                setStatus('urlStatus', 'err', 'Please enter a URL.');
+                return;
+            }
+
+            setStatus('urlStatus', 'loading', 'Fetching image...');
+            resetPreview();
+            setStatus('urlStatus', 'loading', 'Fetching image...');
+            document.getElementById('fetchBtn').disabled = true;
+
+            try {
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+                const ct = resp.headers.get('content-type') || '';
+                if (!ct.startsWith('image/')) {
+                    throw new Error('URL does not point to an image (got: ' + ct + ')');
+                }
+
+                const blob = await resp.blob();
+
+                // Build a File from the blob so we can preview + upload it
+                const ext = ct.split('/')[1].split(';')[0] || 'jpg';
+                const file = new File([blob], 'fetched.' + ext, { type: ct });
+
+                showPreview(URL.createObjectURL(blob));
+                setStatus('urlStatus', 'loading', 'Uploading to server...');
+
+                const savedPath = await uploadToServer(file);
+                document.getElementById('inputField').value = savedPath;
+                setStatus('urlStatus', 'ok',
+                    'Saved → ' + savedPath + ' (' + (blob.size / 1024).toFixed(1) + ' KB)');
+            } catch (err) {
+                setStatus('urlStatus', 'err', 'Error: ' + err.message);
+            } finally {
+                document.getElementById('fetchBtn').disabled = false;
+            }
+        }
+
+        // ── Send the input + type to the AI backend ───────────────────────
+        async function sendInput() {
+            const input = document.getElementById('inputField').value.trim();
+            const type = document.getElementById('inputType').value;
+
+            if (!input) {
+                alert('Please provide an input first.');
+                return;
+            }
+
+            document.getElementById('aiResponse').textContent = 'Waiting for response...';
+
+            try {
+                const resp = await fetch('/send-input', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ input, type }),
+                });
+                const data = await resp.json();
+                document.getElementById('aiResponse').textContent =
+                    JSON.stringify(data, null, 2);
+            } catch (err) {
+                document.getElementById('aiResponse').textContent = 'Error: ' + err.message;
+            }
+        }
+    </script>
+</body>
+
+</html>

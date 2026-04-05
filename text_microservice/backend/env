@@ -1,0 +1,6 @@
+PORT=3000
+
+# Microservice URLs
+FILE_ANALYZER_URL=http://localhost:4001
+SCORE_AGGREGATOR_URL=http://localhost:4002
+CHATBOT_URL=http://localhost:4003
